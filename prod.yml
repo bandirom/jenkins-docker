@@ -1,0 +1,45 @@
+version: '3.7'
+
+services:
+  jenkins:
+    image: jenkins/jenkins
+    restart: always
+    volumes:
+      - ./jenkins_home/:/var/jenkins_home/
+    expose:
+      - 8080
+    env_file:
+      - docker/nginx-proxy/env/.env
+  nginx-proxy:
+    container_name: nginx-proxy
+    build:
+      context: .
+      dockerfile: docker/prod/nginx-proxy/Dockerfile
+    volumes:
+      - certs:/etc/nginx/certs
+      - html:/usr/share/nginx/html
+      - vhost:/etc/nginx/vhost.d
+      - /var/run/docker.sock:/tmp/docker.sock:ro
+    ports:
+      - 80:80
+      - 443:443
+    depends_on:
+      - jenkins
+    restart: always
+    nginx-proxy-letsencrypt:
+      image: jrcs/letsencrypt-nginx-proxy-companion
+      env_file:
+        - ./docker/prod/env/.env.proxy-companion
+        - ./docker/.env.stemsc_data
+      volumes:
+        - /var/run/docker.sock:/var/run/docker.sock:ro
+        - certs:/etc/nginx/certs
+        - html:/usr/share/nginx/html
+        - vhost:/etc/nginx/vhost.d
+      depends_on:
+        - nginx-proxy
+
+volumes:
+  certs:
+  html:
+  vhost:
